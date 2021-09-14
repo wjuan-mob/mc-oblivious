@@ -6,3 +6,4 @@ for use in an Intel SGX environment.
 
 In crate right now:
 - Adaptation of Path ORAM
+- Adaptation of Circuit ORAM
