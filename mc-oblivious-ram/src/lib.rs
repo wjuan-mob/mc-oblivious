@@ -33,6 +33,8 @@ pub use position_map::{ORAMU32PositionMap, TrivialPositionMap, U32PositionMapCre
 
 mod path_oram;
 pub use path_oram::PathORAM;
+mod circuit_oram;
+// pub use circuit_oram::CircuitORAM;
 
 /// Creator for PathORAM based on 4096-sized blocks of storage and bucket size (Z) of 2,
 /// and a basic recursive position map implementation
@@ -90,6 +92,33 @@ where
         PathORAM::new::<U32PositionMapCreator<U1024, R, Self>, SC, M>(size, stash_size, rng_maker)
     }
 }
+
+// /// Creator for CircuitORAM based on 4096-sized blocks of storage and bucket size (Z) of 4 and carry size 1
+// /// and a basic recursive position map implementation
+// pub struct CircuitORAM4096Z4Creator<R, SC>
+// where
+//     R: RngCore + CryptoRng + 'static,
+//     SC: ORAMStorageCreator<U4096, U64>,
+// {
+//     _rng: PhantomData<fn() -> R>,
+//     _sc: PhantomData<fn() -> SC>,
+// }
+
+// impl<R, SC> ORAMCreator<U1024, R> for CircuitORAM4096Z4Creator<R, SC>
+// where
+//     R: RngCore + CryptoRng + Send + Sync + 'static,
+//     SC: ORAMStorageCreator<U4096, U64>,
+// {
+//     type Output = CircuitORAM<U1024, U4, SC::Output, R>;
+
+//     fn create<M: 'static + FnMut() -> R>(
+//         size: u64,
+//         stash_size: usize,
+//         rng_maker: &mut M,
+//     ) -> Self::Output {
+//         CircuitOram::new::<U32PositionMapCreator<U1024, R, Self>, SC, M>(size, stash_size, rng_maker)
+//     }
+// }
 
 #[cfg(test)]
 mod testing {
@@ -363,6 +392,7 @@ mod testing {
             let mut oram = PathORAM4096Z4Creator::<RngType, HeapORAMStorageCreator>::create(
                 131072, STASH_SIZE, &mut maker,
             );
+            assert_ne!(true, true);
             testing::exercise_oram(60_000, &mut oram, &mut rng);
         });
     }

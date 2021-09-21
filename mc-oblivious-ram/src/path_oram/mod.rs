@@ -243,7 +243,7 @@ where
 /// call malloc with every checkout.
 ///
 /// This is mainly just an organizational thing.
-struct BranchCheckout<ValueSize, Z>
+pub struct BranchCheckout<ValueSize, Z>
 where
     ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
     Z: Unsigned + Mul<ValueSize> + Mul<MetaSize>,
@@ -318,12 +318,12 @@ where
         src_meta: &mut A8Bytes<MetaSize>,
     ) {
         condition &= !meta_is_vacant(src_meta);
-        let lowest_legal_index = self.lowest_legal_index(*meta_leaf_num(src_meta));
+        let lowest_height_legal_index = self.lowest_height_legal_index(*meta_leaf_num(src_meta));
         Self::insert_into_branch_suffix(
             condition,
             src_data,
             src_meta,
-            lowest_legal_index,
+            lowest_height_legal_index,
             &mut self.data,
             &mut self.meta,
         );
@@ -390,12 +390,12 @@ where
     }
 
     /// Given a tree-index value (a node in the tree)
-    /// Compute the lowest legal index of a bucket in this branch into which it can
+    /// Compute the lowest height (closest to the leaf) legal index of a bucket in this branch into which it can
     /// be placed. This depends on the common ancestor height of tree_index and self.leaf.
     ///
     /// This is required to give well-defined output even if tree_index is 0.
     /// It is not required to give well-defined output if self.leaf is 0.
-    fn lowest_legal_index(&self, query: u64) -> usize {
+    pub fn lowest_height_legal_index(&self, query: u64) -> usize {
         Self::lowest_legal_index_impl(query, self.leaf, self.data.len())
     }
 
@@ -512,5 +512,39 @@ mod details {
             meta_set_vacant(test, src_meta);
             condition &= !test;
         }
+    }
+}
+
+/// Evictor functions
+mod evictor {
+    use super::*;
+
+    /*Make a root-to-leaf linear metadata scan to prepare the deepest array.
+    After this algorithm, deepest[i] stores the source level of the deepest block in path[0..i − 1] that can
+    legally reside in path[i]. */
+    #[allow(dead_code)]
+    pub fn prepare_deepest<ValueSize, Z>(
+        deepest_meta: &mut [A8Bytes<MetaSize>],
+        stash_data: &mut [A64Bytes<ValueSize>],
+        stash_meta: &mut [A8Bytes<MetaSize>],
+        branch: BranchCheckout<ValueSize, Z>,
+    ) where
+        ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
+        Z: Unsigned + Mul<ValueSize> + Mul<MetaSize>,
+        Prod<Z, ValueSize>: ArrayLength<u8> + PartialDiv<U8>,
+        Prod<Z, MetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    {
+        debug_assert!(stash_data.len() == stash_meta.len());
+        debug_assert!(deepest_meta.len() == branch.meta.len());
+        // for idx in 0..src_meta.len() {
+        //     let test = condition
+        //         & (query.ct_eq(meta_block_num(&src_meta[idx])))
+        //         & !meta_is_vacant(&src_meta[idx]);
+        //     dest_meta.cmov(test, &src_meta[idx]);
+        //     dest_data.cmov(test, &src_data[idx]);
+        //     // Zero out the src[meta] if we moved it
+        //     meta_set_vacant(test, &mut src_meta[idx]);
+        //     condition &= !test;
+        // }
     }
 }
