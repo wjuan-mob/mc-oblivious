@@ -420,7 +420,8 @@ pub struct CircuitOramDeterministicEvictCreator {
 }
 impl CircuitOramDeterministicEvictCreator {
     /// Create a factory for a deterministic branch selector that will evict
-    /// number_of_additional_branches_to_evict branches per access
+    /// number_of_additional_branches_to_evict branches per access in addition
+    /// to the checked out branch
     pub fn new(number_of_additional_branches_to_evict: usize) -> Self {
         Self {
             number_of_additional_branches_to_evict,
@@ -447,7 +448,7 @@ where
 }
 
 /// An evictor that implements a deterministic branch selection in reverse
-/// lexicographic order and the Circuit
+/// lexicographic order and using the Circuit
 /// oram eviction strategy
 pub struct CircuitOramDeterministicEvict {
     number_of_additional_branches_to_evict: usize,
@@ -522,7 +523,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
     prepare_deepest::<ValueSize, Z>(&mut deepest_meta, stash_meta, &branch.meta, branch.leaf);
     prepare_target::<ValueSize, Z>(&mut target_meta, &mut deepest_meta, &branch.meta);
 
-    // Just initializing the held data and held meta with some default values.
+    // Initializing the held data and held meta with some default values.
     let mut dummy_held_data: A64Bytes<ValueSize> = Default::default();
     let mut dummy_held_meta: A8Bytes<MetaSize> = Default::default();
 
@@ -530,7 +531,8 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
     // from the stash to the leaf. Initially empty.
     let held_data: &mut A64Bytes<ValueSize> = &mut dummy_held_data;
     let held_meta: &mut A8Bytes<MetaSize> = &mut dummy_held_meta;
-    // Dest represents the bucket where we will swap the held element for a new one.
+    // Dest represents the bucket where we will swap the held element for a new
+    // one. Floor_index corresponds to a null value.
     let mut dest = FLOOR_INDEX;
     let stash_index = meta_len;
     //Look through the stash to find the element that can go the deepest, then
@@ -601,88 +603,87 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
             bucket_meta,
         );
     }
-}
-
-fn update_dest_and_take_an_item_to_hold_if_appropriate<ValueSize>(
-    bucket_index: usize,
-    target_meta: &[usize],
-    bucket_meta: &mut [A8Bytes<MetaSize>],
-    bucket_data: &mut [A64Bytes<ValueSize>],
-    id_of_the_deepest_target_for_level: usize,
-    held_meta: &mut A8Bytes<MetaSize>,
-    held_data: &mut A64Bytes<ValueSize>,
-    dest: &mut usize,
-) where
-    ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
-{
-    let target_meta_for_bucket = target_meta.get(bucket_index).unwrap();
-    let should_take_an_element_for_level = !(target_meta_for_bucket).ct_eq(&FLOOR_INDEX);
-    dest.cmov(should_take_an_element_for_level, target_meta_for_bucket);
-    held_data.cmov(
-        should_take_an_element_for_level,
-        &bucket_data[id_of_the_deepest_target_for_level],
-    );
-    held_meta.cmov(
-        should_take_an_element_for_level,
-        &bucket_meta[id_of_the_deepest_target_for_level],
-    );
-    meta_set_vacant(
-        should_take_an_element_for_level,
-        &mut bucket_meta[id_of_the_deepest_target_for_level],
-    );
-}
-
-fn swap_held_element_if_at_destination<ValueSize>(
-    held_meta: &mut A8Bytes<MetaSize>,
-    held_data: &mut A64Bytes<ValueSize>,
-    bucket_num: usize,
-    dest: &mut usize,
-    to_write_meta: &mut A8Bytes<MetaSize>,
-    to_write_data: &mut A64Bytes<ValueSize>,
-) -> Choice
-where
-    ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
-{
-    let held_elem_is_not_vacant_and_bucket_num_is_at_dest =
-        !meta_is_vacant(held_meta) & bucket_num.ct_eq(dest);
-    to_write_data.cmov(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_data);
-    to_write_meta.cmov(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_meta);
-    dest.cmov(
-        held_elem_is_not_vacant_and_bucket_num_is_at_dest,
-        &FLOOR_INDEX,
-    );
-    meta_set_vacant(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_meta);
-    held_elem_is_not_vacant_and_bucket_num_is_at_dest
-}
-
-fn find_index_of_deepest_target_for_bucket<ValueSize, Z>(
-    bucket_meta: &mut [A8Bytes<MetaSize>],
-    leaf: u64,
-    branch_length: usize,
-) -> (usize, usize)
-where
-    ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
-    Z: Unsigned + Mul<ValueSize> + Mul<MetaSize>,
-    Prod<Z, ValueSize>: ArrayLength<u8> + PartialDiv<U8>,
-    Prod<Z, MetaSize>: ArrayLength<u8> + PartialDiv<U8>,
-{
-    let mut deepest_target_for_level = FLOOR_INDEX;
-    let mut id_of_the_deepest_target_for_level = 0usize;
-    for (id, src_meta) in bucket_meta.iter_mut().enumerate() {
-        let elem_destination: usize =
-            BranchCheckout::<ValueSize, Z>::lowest_height_legal_index_impl(
-                *meta_leaf_num(src_meta),
-                leaf,
-                branch_length,
-            );
-        let elem_destination_64: u64 = u64::try_from(elem_destination).unwrap();
-        let is_elem_deeper = elem_destination_64
-            .ct_lt(&u64::try_from(deepest_target_for_level).unwrap())
-            & !meta_is_vacant(src_meta);
-        id_of_the_deepest_target_for_level.cmov(is_elem_deeper, &id);
-        deepest_target_for_level.cmov(is_elem_deeper, &elem_destination);
+    fn update_dest_and_take_an_item_to_hold_if_appropriate<ValueSize>(
+        bucket_index: usize,
+        target_meta: &[usize],
+        bucket_meta: &mut [A8Bytes<MetaSize>],
+        bucket_data: &mut [A64Bytes<ValueSize>],
+        id_of_the_deepest_target_for_level: usize,
+        held_meta: &mut A8Bytes<MetaSize>,
+        held_data: &mut A64Bytes<ValueSize>,
+        dest: &mut usize,
+    ) where
+        ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
+    {
+        let target_meta_for_bucket = target_meta.get(bucket_index).unwrap();
+        let should_take_an_element_for_level = !(target_meta_for_bucket).ct_eq(&FLOOR_INDEX);
+        dest.cmov(should_take_an_element_for_level, target_meta_for_bucket);
+        held_data.cmov(
+            should_take_an_element_for_level,
+            &bucket_data[id_of_the_deepest_target_for_level],
+        );
+        held_meta.cmov(
+            should_take_an_element_for_level,
+            &bucket_meta[id_of_the_deepest_target_for_level],
+        );
+        meta_set_vacant(
+            should_take_an_element_for_level,
+            &mut bucket_meta[id_of_the_deepest_target_for_level],
+        );
     }
-    (deepest_target_for_level, id_of_the_deepest_target_for_level)
+
+    fn swap_held_element_if_at_destination<ValueSize>(
+        held_meta: &mut A8Bytes<MetaSize>,
+        held_data: &mut A64Bytes<ValueSize>,
+        bucket_num: usize,
+        dest: &mut usize,
+        to_write_meta: &mut A8Bytes<MetaSize>,
+        to_write_data: &mut A64Bytes<ValueSize>,
+    ) -> Choice
+    where
+        ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
+    {
+        let held_elem_is_not_vacant_and_bucket_num_is_at_dest =
+            !meta_is_vacant(held_meta) & bucket_num.ct_eq(dest);
+        to_write_data.cmov(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_data);
+        to_write_meta.cmov(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_meta);
+        dest.cmov(
+            held_elem_is_not_vacant_and_bucket_num_is_at_dest,
+            &FLOOR_INDEX,
+        );
+        meta_set_vacant(held_elem_is_not_vacant_and_bucket_num_is_at_dest, held_meta);
+        held_elem_is_not_vacant_and_bucket_num_is_at_dest
+    }
+
+    fn find_index_of_deepest_target_for_bucket<ValueSize, Z>(
+        bucket_meta: &mut [A8Bytes<MetaSize>],
+        leaf: u64,
+        branch_length: usize,
+    ) -> (usize, usize)
+    where
+        ValueSize: ArrayLength<u8> + PartialDiv<U8> + PartialDiv<U64>,
+        Z: Unsigned + Mul<ValueSize> + Mul<MetaSize>,
+        Prod<Z, ValueSize>: ArrayLength<u8> + PartialDiv<U8>,
+        Prod<Z, MetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    {
+        let mut deepest_target_for_level = FLOOR_INDEX;
+        let mut id_of_the_deepest_target_for_level = 0usize;
+        for (id, src_meta) in bucket_meta.iter_mut().enumerate() {
+            let elem_destination: usize =
+                BranchCheckout::<ValueSize, Z>::lowest_height_legal_index_impl(
+                    *meta_leaf_num(src_meta),
+                    leaf,
+                    branch_length,
+                );
+            let elem_destination_64: u64 = u64::try_from(elem_destination).unwrap();
+            let is_elem_deeper = elem_destination_64
+                .ct_lt(&u64::try_from(deepest_target_for_level).unwrap())
+                & !meta_is_vacant(src_meta);
+            id_of_the_deepest_target_for_level.cmov(is_elem_deeper, &id);
+            deepest_target_for_level.cmov(is_elem_deeper, &elem_destination);
+        }
+        (deepest_target_for_level, id_of_the_deepest_target_for_level)
+    }
 }
 
 #[cfg(test)]
