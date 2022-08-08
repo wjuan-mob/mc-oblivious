@@ -135,7 +135,7 @@ where
         stash_size: usize,
         rng_maker: &mut M,
     ) -> Self::Output {
-        let evictor_factory = CircuitOramDeterministicEvictCreator::new(0);
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(2);
         PathORAM::new::<
             U32PositionMapCreator<U1024, R, Self>,
             SC,
@@ -168,7 +168,7 @@ where
         stash_size: usize,
         rng_maker: &mut M,
     ) -> Self::Output {
-        let evictor_factory = CircuitOramDeterministicEvictCreator::new(0);
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(2);
         PathORAM::new::<
             U32PositionMapCreator<U2048, R, Self>,
             SC,
@@ -402,6 +402,110 @@ mod testing {
             assert_eq!(a64_bytes(8), oram.write(9, &a64_bytes(12)));
             assert_eq!(a64_bytes(12), oram.read(9));
         })
+    }
+
+    // Sanity check the z4 circuit oram
+    #[test]
+    fn sanity_check_circuit_oram_z4_262144() {
+        run_with_several_seeds(|rng| {
+            let mut oram = CircuitORAM4096Z4Creator::<RngType, HeapORAMStorageCreator>::create(
+                262144,
+                STASH_SIZE,
+                &mut rng_maker(rng),
+            );
+            assert_eq!(a64_bytes(0), oram.write(0, &a64_bytes(1)));
+            assert_eq!(a64_bytes(1), oram.write(0, &a64_bytes(2)));
+            assert_eq!(a64_bytes(2), oram.write(0, &a64_bytes(3)));
+            assert_eq!(a64_bytes(0), oram.write(2, &a64_bytes(4)));
+            assert_eq!(a64_bytes(4), oram.write(2, &a64_bytes(5)));
+            assert_eq!(a64_bytes(3), oram.write(0, &a64_bytes(6)));
+            assert_eq!(a64_bytes(6), oram.write(0, &a64_bytes(7)));
+            assert_eq!(a64_bytes(0), oram.write(9, &a64_bytes(8)));
+            assert_eq!(a64_bytes(5), oram.write(2, &a64_bytes(10)));
+            assert_eq!(a64_bytes(7), oram.write(0, &a64_bytes(11)));
+            assert_eq!(a64_bytes(8), oram.write(9, &a64_bytes(12)));
+            assert_eq!(a64_bytes(12), oram.read(9));
+        })
+    }
+
+    // Run the exercise oram tests for 20,000 rounds in 8192 sized z4 oram circuit
+    // oram
+    #[test]
+    fn exercise_circuit_oram_z4_8192() {
+        run_with_several_seeds(|rng| {
+            let mut maker = rng_maker(rng);
+            let mut rng = maker();
+            let mut oram = CircuitORAM4096Z4Creator::<RngType, HeapORAMStorageCreator>::create(
+                8192, STASH_SIZE, &mut maker,
+            );
+            testing::exercise_oram(20_000, &mut oram, &mut rng);
+        });
+    }
+
+    // Run the exercise oram tests for 20,000 rounds in 8192 sized z4 oram circuit
+    // oram
+    #[test]
+    fn exercise_consecutive_circuit_oram_z4_8192() {
+        run_with_several_seeds(|rng| {
+            let mut maker = rng_maker(rng);
+            let mut rng = maker();
+            let mut oram = CircuitORAM4096Z4Creator::<RngType, HeapORAMStorageCreator>::create(
+                8192, STASH_SIZE, &mut maker,
+            );
+            testing::exercise_oram_consecutive(20_000, &mut oram, &mut rng);
+        });
+    }
+
+    // Sanity check the z4 circuit oram
+    #[test]
+    fn sanity_check_circuit_oram_z2_262144() {
+        run_with_several_seeds(|rng| {
+            let mut oram = CircuitORAM4096Z2Creator::<RngType, HeapORAMStorageCreator>::create(
+                262144,
+                STASH_SIZE,
+                &mut rng_maker(rng),
+            );
+            assert_eq!(a64_bytes(0), oram.write(0, &a64_bytes(1)));
+            assert_eq!(a64_bytes(1), oram.write(0, &a64_bytes(2)));
+            assert_eq!(a64_bytes(2), oram.write(0, &a64_bytes(3)));
+            assert_eq!(a64_bytes(0), oram.write(2, &a64_bytes(4)));
+            assert_eq!(a64_bytes(4), oram.write(2, &a64_bytes(5)));
+            assert_eq!(a64_bytes(3), oram.write(0, &a64_bytes(6)));
+            assert_eq!(a64_bytes(6), oram.write(0, &a64_bytes(7)));
+            assert_eq!(a64_bytes(0), oram.write(9, &a64_bytes(8)));
+            assert_eq!(a64_bytes(5), oram.write(2, &a64_bytes(10)));
+            assert_eq!(a64_bytes(7), oram.write(0, &a64_bytes(11)));
+            assert_eq!(a64_bytes(8), oram.write(9, &a64_bytes(12)));
+            assert_eq!(a64_bytes(12), oram.read(9));
+        })
+    }
+
+    // Run the exercise oram tests for 20,000 rounds in 8192 sized z4 oram circuit
+    // oram
+    #[test]
+    fn exercise_circuit_oram_z2_8192() {
+        run_with_several_seeds(|rng| {
+            let mut maker = rng_maker(rng);
+            let mut rng = maker();
+            let mut oram = CircuitORAM4096Z2Creator::<RngType, HeapORAMStorageCreator>::create(
+                8192, STASH_SIZE, &mut maker,
+            );
+            testing::exercise_oram(20_000, &mut oram, &mut rng);
+        });
+    }
+
+    // Run the exercise oram tests for 20,000 rounds in 8192 sized z4 oram circuit
+    // oram
+    #[test]
+    fn exercise_consecutive_circuit_oram_z2_8192() {
+        run_with_several_seeds(|rng| {
+            let mut maker = rng_maker(rng);
+            let mut rng = maker();
+            let mut oram = CircuitORAM4096Z2Creator::<RngType, HeapORAMStorageCreator>::create(
+                8192, STASH_SIZE, &mut maker,
+            );
+            testing::exercise_oram_consecutive(20_000, &mut oram, &mut rng);
+        });
     }
 
     // Run the exercise oram tests for 20,000 rounds in 8192 sized z4 oram
