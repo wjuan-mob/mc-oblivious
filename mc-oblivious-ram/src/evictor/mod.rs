@@ -1,28 +1,17 @@
 //! Evictor functions
 
-use aligned_cmov::A8Bytes;
+use aligned_cmov::{
+    typenum::{PartialDiv, Prod, Unsigned, U64, U8},
+    A64Bytes, A8Bytes, ArrayLength,
+};
 
-use aligned_cmov::A64Bytes;
-
-use aligned_cmov::typenum::Prod;
 use balanced_tree_index::TreeIndex;
 
 use core::ops::Mul;
 
-use aligned_cmov::typenum::Unsigned;
-
-use aligned_cmov::typenum::U64;
-
-use aligned_cmov::typenum::U8;
-
-use aligned_cmov::typenum::PartialDiv;
-
-use aligned_cmov::ArrayLength;
-
-use rand_core::CryptoRng;
+use rand_core::{CryptoRng, RngCore};
 
 use crate::path_oram::{BranchCheckout, MetaSize};
-use rand_core::RngCore;
 
 fn deterministic_get_next_branch_to_evict(num_bits_needed: u32, iteration: u64) -> u64 {
     let leaf_significant_index: u64 = 1 << (num_bits_needed);
