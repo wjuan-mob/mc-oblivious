@@ -539,7 +539,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
     // putting it in the hold and setting dest to the target[STASH_INDEX]
     let (_deepest_target, id_of_the_deepest_target_for_level) =
         find_index_of_deepest_target_for_bucket::<ValueSize, Z>(stash_meta, branch.leaf, meta_len);
-    update_dest_and_take_an_item_to_hold_if_appropriate(
+    compare_and_take_held_item_if_appropriate(
         stash_index,
         &target_meta,
         stash_meta,
@@ -569,7 +569,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
 
         //If held element is not vacant and bucket_num is dest. We will write this elem
         // so zero out the held/dest.
-        let held_elem_is_not_vacant_and_bucket_num_is_at_dest = swap_held_element_if_at_destination(
+        let held_elem_is_not_vacant_and_bucket_num_is_at_dest = drop_held_element_if_at_destination(
             held_meta,
             held_data,
             bucket_num,
@@ -584,7 +584,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
                 branch.leaf,
                 meta_len,
             );
-        update_dest_and_take_an_item_to_hold_if_appropriate(
+        compare_and_take_held_item_if_appropriate(
             bucket_num,
             &target_meta,
             bucket_meta,
@@ -603,7 +603,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
             bucket_meta,
         );
     }
-    fn update_dest_and_take_an_item_to_hold_if_appropriate<ValueSize>(
+    fn compare_and_take_held_item_if_appropriate<ValueSize>(
         bucket_index: usize,
         target_meta: &[usize],
         bucket_meta: &mut [A8Bytes<MetaSize>],
@@ -632,7 +632,7 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
         );
     }
 
-    fn swap_held_element_if_at_destination<ValueSize>(
+    fn drop_held_element_if_at_destination<ValueSize>(
         held_meta: &mut A8Bytes<MetaSize>,
         held_data: &mut A64Bytes<ValueSize>,
         bucket_num: usize,
