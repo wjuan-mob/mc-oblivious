@@ -33,7 +33,10 @@ mod position_map;
 pub use position_map::{ORAMU32PositionMap, TrivialPositionMap, U32PositionMapCreator};
 
 mod evictor;
-pub use evictor::{PathOramDeterministicEvict, PathOramDeterministicEvictCreator};
+pub use evictor::{
+    CircuitOramDeterministicEvict, CircuitOramDeterministicEvictCreator,
+    PathOramDeterministicEvict, PathOramDeterministicEvictCreator,
+};
 
 mod path_oram;
 pub use path_oram::PathORAM;
@@ -105,6 +108,72 @@ where
             SC,
             M,
             PathOramDeterministicEvictCreator,
+        >(size, stash_size, rng_maker, evictor_factory)
+    }
+}
+
+/// Creator for CircuitORAM based on 4096-sized blocks of storage
+/// and bucket size (Z) of 4, and a basic recursive position map implementation
+pub struct CircuitORAM4096Z4Creator<R, SC>
+where
+    R: RngCore + CryptoRng + 'static,
+    SC: ORAMStorageCreator<U4096, U64>,
+{
+    _rng: PhantomData<fn() -> R>,
+    _sc: PhantomData<fn() -> SC>,
+}
+
+impl<R, SC> ORAMCreator<U1024, R> for CircuitORAM4096Z4Creator<R, SC>
+where
+    R: RngCore + CryptoRng + Send + Sync + 'static,
+    SC: ORAMStorageCreator<U4096, U64>,
+{
+    type Output = PathORAM<U1024, U4, SC::Output, R, CircuitOramDeterministicEvict>;
+
+    fn create<M: 'static + FnMut() -> R>(
+        size: u64,
+        stash_size: usize,
+        rng_maker: &mut M,
+    ) -> Self::Output {
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(0);
+        PathORAM::new::<
+            U32PositionMapCreator<U1024, R, Self>,
+            SC,
+            M,
+            CircuitOramDeterministicEvictCreator,
+        >(size, stash_size, rng_maker, evictor_factory)
+    }
+}
+
+/// Creator for CircuitORAM based on 4096-sized blocks of storage
+/// and bucket size (Z) of 2, and a basic recursive position map implementation
+pub struct CircuitORAM4096Z2Creator<R, SC>
+where
+    R: RngCore + CryptoRng + 'static,
+    SC: ORAMStorageCreator<U4096, U32>,
+{
+    _rng: PhantomData<fn() -> R>,
+    _sc: PhantomData<fn() -> SC>,
+}
+
+impl<R, SC> ORAMCreator<U2048, R> for CircuitORAM4096Z2Creator<R, SC>
+where
+    R: RngCore + CryptoRng + Send + Sync + 'static,
+    SC: ORAMStorageCreator<U4096, U32>,
+{
+    type Output = PathORAM<U2048, U2, SC::Output, R, CircuitOramDeterministicEvict>;
+
+    fn create<M: 'static + FnMut() -> R>(
+        size: u64,
+        stash_size: usize,
+        rng_maker: &mut M,
+    ) -> Self::Output {
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(0);
+        PathORAM::new::<
+            U32PositionMapCreator<U2048, R, Self>,
+            SC,
+            M,
+            CircuitOramDeterministicEvictCreator,
         >(size, stash_size, rng_maker, evictor_factory)
     }
 }
