@@ -561,11 +561,11 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
         let bucket_data: &mut [A64Bytes<ValueSize>] = upper_data[0].as_mut_aligned_chunks();
         let bucket_meta: &mut [A8Bytes<MetaSize>] = upper_meta[0].as_mut_aligned_chunks();
 
-        let mut dummy_to_write_data: A64Bytes<ValueSize> = Default::default();
-        let mut dummy_to_write_meta: A8Bytes<MetaSize> = Default::default();
-
-        let to_write_data: &mut A64Bytes<ValueSize> = &mut dummy_to_write_data;
-        let to_write_meta: &mut A8Bytes<MetaSize> = &mut dummy_to_write_meta;
+        // This to_write dummy are being used as a temporary space to be used
+        // for a 3 way swap to move the held item into the bucket that is full,
+        // and pick up an element from the bucket at the same time.
+        let mut temp_to_write_data: A64Bytes<ValueSize> = Default::default();
+        let mut temp_to_write_meta: A8Bytes<MetaSize> = Default::default();
 
         //If held element is not vacant and bucket_num is dest. We will write this elem
         // so zero out the held/dest.
@@ -574,8 +574,8 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
             held_data,
             bucket_num,
             &mut dest,
-            to_write_meta,
-            to_write_data,
+            &mut temp_to_write_meta,
+            &mut temp_to_write_data,
         );
         debug_assert!(bucket_data.len() == bucket_meta.len());
         let (_deepest_target, id_of_the_deepest_target_for_level) =
@@ -597,8 +597,8 @@ fn circuit_oram_eviction_strategy<ValueSize, Z>(
 
         ct_insert(
             held_elem_is_not_vacant_and_bucket_num_is_at_dest,
-            to_write_data,
-            to_write_meta,
+            &mut temp_to_write_data,
+            &mut temp_to_write_meta,
             bucket_data,
             bucket_meta,
         );
