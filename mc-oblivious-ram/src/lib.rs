@@ -41,6 +41,13 @@ pub use evictor::{
 mod path_oram;
 pub use path_oram::PathORAM;
 
+/// For circuit oram to have linear stash size growth at least 2 additional
+/// branches that are sufficiently non overlapping must be evicted every time.
+/// This constant is passed into the evictor creator to specify the number of
+/// additional branches to evict per eviction
+const ADDITIONAL_BRANCHES_TO_EVICT: usize = 2;
+
+
 /// Creator for PathORAM based on 4096-sized blocks of storage and bucket size
 /// (Z) of 2, and a basic recursive position map implementation
 ///
@@ -101,6 +108,9 @@ where
         stash_size: usize,
         rng_maker: &mut M,
     ) -> Self::Output {
+        // Path Oram's evict creator does not need to evict more branches than
+        // the checked out branch due to packing the stash densely, therefore
+        // passing 0 additional branches to evict.
         let evictor_factory = PathOramDeterministicEvictCreator::new(0);
 
         PathORAM::new::<
@@ -135,7 +145,7 @@ where
         stash_size: usize,
         rng_maker: &mut M,
     ) -> Self::Output {
-        let evictor_factory = CircuitOramDeterministicEvictCreator::new(2);
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(ADDITIONAL_BRANCHES_TO_EVICT);
         PathORAM::new::<
             U32PositionMapCreator<U1024, R, Self>,
             SC,
@@ -168,7 +178,7 @@ where
         stash_size: usize,
         rng_maker: &mut M,
     ) -> Self::Output {
-        let evictor_factory = CircuitOramDeterministicEvictCreator::new(2);
+        let evictor_factory = CircuitOramDeterministicEvictCreator::new(ADDITIONAL_BRANCHES_TO_EVICT);
         PathORAM::new::<
             U32PositionMapCreator<U2048, R, Self>,
             SC,
