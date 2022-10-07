@@ -38,3 +38,7 @@ harness = false
 [[bench]]
 name = "view"
 harness = false
+
+[[bench]]
+name = "view_circuit"
+harness = false
