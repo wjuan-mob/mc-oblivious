@@ -4,19 +4,19 @@ use aligned_cmov::{typenum, A8Bytes};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use mc_crypto_rand::McRng;
 use mc_oblivious_map::{CuckooHashTable, CuckooHashTableCreator};
-use mc_oblivious_ram::CircuitORAM4096Z4Creator;
+use mc_oblivious_ram::CircuitORAM4096Z2Creator;
 use mc_oblivious_traits::{HeapORAMStorageCreator, OMapCreator, ORAMCreator, ObliviousHashMap};
 use std::time::Duration;
 use test_helper::a8_8;
-use typenum::{U1024, U16, U240};
+use typenum::{U2048, U16, U240};
 
-type CircuitORAMCreatorZ4 = CircuitORAM4096Z4Creator<McRng, HeapORAMStorageCreator>;
-type CircuitORAMZ4 = <CircuitORAMCreatorZ4 as ORAMCreator<U1024, McRng>>::Output;
-type CircuitTable = CuckooHashTable<U16, U240, U1024, McRng, CircuitORAMZ4>;
-type CircuitCuckooCreatorZ4 = CuckooHashTableCreator<U1024, McRng, CircuitORAMCreatorZ4>;
+type CircuitORAMCreatorZ2 = CircuitORAM4096Z2Creator<McRng, HeapORAMStorageCreator>;
+type CircuitORAMZ2 = <CircuitORAMCreatorZ2 as ORAMCreator<U2048, McRng>>::Output;
+type CircuitTable = CuckooHashTable<U16, U240, U2048, McRng, CircuitORAMZ2>;
+type CircuitCuckooCreatorZ2 = CuckooHashTableCreator<U2048, McRng, CircuitORAMCreatorZ2>;
 
 fn make_circuit_omap(capacity: u64) -> CircuitTable {
-    CircuitCuckooCreatorZ4::create(capacity, 32, || McRng {})
+    CircuitCuckooCreatorZ2::create(capacity, 32, || McRng {})
 }
 
 pub fn circuit_oram_4096_z4_1mil_view_write(c: &mut Criterion) {
@@ -25,7 +25,7 @@ pub fn circuit_oram_4096_z4_1mil_view_write(c: &mut Criterion) {
     let key: A8Bytes<U16> = a8_8(1);
     let val: A8Bytes<U240> = a8_8(2);
 
-    c.bench_function("capacity 1 million vartime write", |b| {
+    c.bench_function("capacity 1 million circuit vartime write", |b| {
         b.iter(|| omap.vartime_write(&key, &val, 1.into()))
     });
 }
@@ -38,7 +38,7 @@ pub fn circuit_oram_4096_z4_1mil_view_write_progressive(c: &mut Criterion) {
 
     let mut temp = 0u64;
 
-    c.bench_function("capacity 1 million vartime write progressive", |b| {
+    c.bench_function("capacity 1 million circuit vartime write progressive", |b| {
         b.iter(|| {
             (&mut key[0..8]).copy_from_slice(&black_box(temp).to_le_bytes());
             temp += 1;
@@ -54,7 +54,7 @@ pub fn circuit_oram_4096_z4_16mil_view_write(c: &mut Criterion) {
     let key: A8Bytes<U16> = a8_8(1);
     let val: A8Bytes<U240> = a8_8(2);
 
-    c.bench_function("capacity 16 million vartime write", |b| {
+    c.bench_function("capacity 16 million circuit vartime write", |b| {
         b.iter(|| omap.vartime_write(&key, &val, 1.into()))
     });
 }

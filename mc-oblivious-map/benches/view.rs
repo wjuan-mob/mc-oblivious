@@ -25,7 +25,7 @@ pub fn path_oram_4096_z4_1mil_view_write(c: &mut Criterion) {
     let key: A8Bytes<U16> = a8_8(1);
     let val: A8Bytes<U240> = a8_8(2);
 
-    c.bench_function("capacity 1 million vartime write", |b| {
+    c.bench_function("capacity 1 million path vartime write", |b| {
         b.iter(|| omap.vartime_write(&key, &val, 1.into()))
     });
 }
@@ -38,7 +38,7 @@ pub fn path_oram_4096_z4_1mil_view_write_progressive(c: &mut Criterion) {
 
     let mut temp = 0u64;
 
-    c.bench_function("capacity 1 million vartime write progressive", |b| {
+    c.bench_function("capacity 1 million path vartime write progressive", |b| {
         b.iter(|| {
             (&mut key[0..8]).copy_from_slice(&black_box(temp).to_le_bytes());
             temp += 1;
@@ -54,7 +54,7 @@ pub fn path_oram_4096_z4_16mil_view_write(c: &mut Criterion) {
     let key: A8Bytes<U16> = a8_8(1);
     let val: A8Bytes<U240> = a8_8(2);
 
-    c.bench_function("capacity 16 million vartime write", |b| {
+    c.bench_function("capacity 16 million path vartime write", |b| {
         b.iter(|| omap.vartime_write(&key, &val, 1.into()))
     });
 }
